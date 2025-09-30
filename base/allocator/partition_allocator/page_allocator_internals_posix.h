@@ -59,6 +59,14 @@ uint32_t SecTaskGetCodeSignStatus(SecTaskRef task) API_AVAILABLE(macos(10.12));
 
 #endif  // BUILDFLAG(IS_MAC)
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+namespace v8 {
+namespace base {
+extern thread_local bool t_cheri_madvise;
+}
+}
+#endif   // __CHERI_PURE_CAPABILITY__
+
 namespace partition_alloc::internal {
 
 namespace {
@@ -208,6 +216,11 @@ uintptr_t SystemAllocPagesInternal(uintptr_t hint,
     s_allocPageErrorCode = errno;
     ret = nullptr;
   }
+#if defined(__CHERI_PURE_CAPABILITY__)
+  if (v8::base::t_cheri_madvise) {
+     PA_PCHECK(madvise(ret, length, MADV_RANDOM) == 0);
+  }
+#endif   // __CHERI_PURE_CAPABILITY__
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
 #if defined(PR_SET_VMA) && defined(PR_SET_VMA_ANON_NAME)
